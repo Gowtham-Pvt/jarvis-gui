@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS Voice Assistant</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- General Setup with GIF Background --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-image: url("https://i.gifer.com/7LP8.gif");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center center;
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            min-height: 100vh;
+            overflow: hidden; /* Prevents scrollbars from the GIF */
+        }
+
+        /* --- Voice Assistant UI Container (Bottom) --- */
+        #voice-ui-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); /* Fades to transparent */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        #voice-ui-container h1 {
+            color: white;
+            text-shadow: 0 0 10px cyan, 0 0 5px cyan;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        #startBtn {
+            padding: 12px 25px;
+            font-size: 16px;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 1px solid cyan;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            margin-top: 15px;
+            text-shadow: 0 0 5px cyan;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        #startBtn:hover {
+            background-color: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 15px cyan, inset 0 0 10px rgba(0,255,255,0.2);
+        }
+
+        #result {
+            margin-bottom: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        #result p {
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            padding: 12px;
+            border-radius: 5px;
+            margin: 8px auto;
+            text-align: left;
+            color: white;
+            line-height: 1.5;
+        }
+        
+        /* Custom scrollbar for result */
+        #result::-webkit-scrollbar { width: 5px; }
+        #result::-webkit-scrollbar-track { background: transparent; }
+        #result::-webkit-scrollbar-thumb { background: cyan; border-radius: 5px; }
+
+        #processing {
+            font-style: italic;
+            color: #00ffff;
+            height: 20px; /* Reserve space to prevent layout shift */
+        }
+        
+        /* --- Center SVG Animation Container --- */
+        .svg-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none; /* Allows clicks to go "through" it */
+            z-index: 5;
+        }
+
+        .main-text {
+            fill: #f0f8ff; /* Alice Blue - bright white */
+            font-size: 38px;
+            letter-spacing: 2px;
+            font-weight: bold;
+            pointer-events: none;
+            /* Enhanced shadow for readability on GIF */
+            filter: drop-shadow(0 0 8px cyan) drop-shadow(0 0 15px cyan); 
+        }
+
+        /* Simplified circle styles for better visuals on GIF */
+        .outer-glow-circle { fill: transparent; stroke: rgba(0, 180, 255, 0.6); stroke-width: 1.5; }
+        .rotating-dashed-circle1 { fill: transparent; stroke: rgba(0, 220, 255, 0.8); stroke-width: 5; stroke-dasharray: 100; }
+        .rotating-dashed-circle2 { fill: transparent; stroke: rgba(0, 255, 255, 0.7); stroke-width: 15; stroke-dasharray: 4, 4; }
+        .inner-glow-circle { fill: #04a3f2; filter: url(#glow); opacity: 0.3; }
+        .pulsating-center-circle { fill: #03bbf8; filter: url(#glow); opacity: 0.4; }
+
+        /* Widget Styles (Top corners) */
+        .widget {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid cyan;
+            border-radius: 10px;
+            padding: 15px;
+            color: cyan;
+            text-shadow: 0 0 5px cyan;
+            box-shadow: 0 0 10px cyan;
+            z-index: 100;
+        }
+        .time-widget { top: 20px; right: 20px; }
+        .network-widget { top: 20px; left: 20px; }
+        .widget h3 { margin-bottom: 5px; font-weight: normal; font-size: 1em; }
+        .widget p { font-size: 1.1em; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Central JARVIS UI and Animations -->
+    <div class="svg-container">
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" x="0" y="0" viewBox="0 0 1800 1280" xml:space="preserve">
+            <defs>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="8" result="blur" />
+                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+            </defs>
+            <circle cx="900" cy="640" r="270" class="outer-glow-circle"><animate attributeName="r" values="260; 270; 260" dur="8s" repeatCount="indefinite"/></circle>
+            <circle cx="900" cy="640" r="260" class="rotating-dashed-circle1"><animateTransform attributeName="transform" type="rotate" values="0 900 640; 360 900 640" dur="12s" repeatCount="indefinite" /></circle>
+            <circle cx="900" cy="640" r="235" class="rotating-dashed-circle2"><animateTransform attributeName="transform" type="rotate" values="0 900 640; -360 900 640" dur="10s" repeatCount="indefinite"/></circle>
+            <circle cx="900" cy="640" r="90" class="inner-glow-circle"><animate attributeName="r" values="85; 90; 85" dur="3s" repeatCount="indefinite"/></circle>
+            <circle cx="900" cy="640" r="40" class="pulsating-center-circle"><animate attributeName="r" values="35; 40; 35" dur="2s" repeatCount="indefinite"/></circle>
+            <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="main-text">J.A.R.V.I.S</text>
+        </svg>
+    </div>
+
+    <!-- UI Widgets -->
+    <div class="widget time-widget">
+        <h3>System Time</h3>
+        <p id="current-time">Loading...</p>
+    </div>
+    <div class="widget network-widget">
+        <h3>Downlink</h3>
+        <p id="network-speed">Checking...</p>
+    </div>
+    
+    <!-- Voice Assistant UI -->
+    <div id="voice-ui-container">
+        
+        <div id="result"></div>
+        <p id="processing"></p>
+        <button id="startBtn">Start Listening</button>
+    </div>
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            
+            // --- WIDGETS SCRIPT ---
+            function updateTime() {
+                const timeString = new Date().toLocaleTimeString();
+                document.getElementById('current-time').textContent = timeString;
+            }
+
+            function updateNetworkSpeed() {
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                if (connection && connection.downlink) {
+                    document.getElementById('network-speed').textContent = `${connection.downlink} Mbps`;
+                } else {
+                    document.getElementById('network-speed').textContent = 'N/A';
+                }
+            }
+
+            setInterval(updateTime, 1000);
+            setInterval(updateNetworkSpeed, 5000);
+            updateTime();
+            updateNetworkSpeed();
+
+            // --- VOICE ASSISTANT SCRIPT ---
+            const startBtn = document.getElementById("startBtn");
+            const resultDiv = document.getElementById("result");
+            const processingP = document.getElementById("processing");
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let toggleBtnFunc = null;
+
+            if (typeof SpeechRecognition === "undefined") {
+                startBtn.remove();
+                resultDiv.innerHTML = "<p><b>Browser does not support the Speech API. Please use a modern version of Chrome or Edge.<b></p>";
+            } else {
+                const recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                recognition.onresult = event => {
+                    const last = event.results.length - 1;
+                    const res = event.results[last];
+                    const text = res[0].transcript;
+                    
+                    if (res.isFinal) {
+                        processingP.innerHTML = "Processing...";
+                        const response = processCommand(text);
+                        const p = document.createElement("p");
+                        p.innerHTML = `<b>You said:</b> ${text}<br><b>Jarvis said:</b> ${response}`;
+                        processingP.innerHTML = "";
+                        resultDiv.insertBefore(p, resultDiv.firstChild); // New responses appear at the top
+                        resultDiv.scrollTop = 0; // Scroll to top
+
+                        speechSynthesis.speak(new SpeechSynthesisUtterance(response));
+                    } else {
+                        processingP.innerHTML = `Listening: ${text}`;
+                    }
+                };
+                
+                // Handle recognition errors
+                recognition.onerror = (event) => {
+                    processingP.innerHTML = `Error: ${event.error}. Please try again.`;
+                    console.error("Speech recognition error", event);
+                };
+
+                let listening = false;
+                toggleBtnFunc = () => {
+                    if (listening) {
+                        recognition.stop();
+                        startBtn.textContent = "Start Listening";
+                        startBtn.style.borderColor = 'cyan';
+                    } else {
+                        recognition.start();
+                        startBtn.textContent = "Stop Listening";
+                        startBtn.style.borderColor = 'red';
+                    }
+                    listening = !listening;
+                };
+
+                startBtn.addEventListener("click", toggleBtnFunc);
+            }
+
+            function processCommand(rawText) {
+                let text = rawText.trim().toLowerCase();
+                let response = null;
+
+                if (text.includes("hello") || text.includes("hi jarvis")) {
+                    response = "Hello, Boss. How can I assist you?";
+                } else if (text.includes("what is your name") || text.includes("who are you")) {
+                    response = "My name is Jarvis, Just A Rather Very Intelligent System.";
+                } else if (text.includes("how are you")) {
+                    response = "I'm functioning within optimal parameters. Thank you for asking!";
+                } else if (text.includes("what time is it") || text.includes("current time")) {
+                    response = "The current time is " + new Date().toLocaleTimeString();
+                } else if (text.includes("stop listening") || text.includes("go offline") || text.includes("goodbye")) {
+                    response = "Shutting down. Goodbye, Boss!";
+                    if (toggleBtnFunc && startBtn.textContent === "Stop Listening") {
+                        toggleBtnFunc();
+                    }
+                } else if (text.includes("open google")) {
+                    response = "Opening Google in a new tab.";
+                    window.open("https://google.com", "_blank");
+                } else if (text.includes("open youtube")) {
+                    response = "Right away. Opening YouTube.";
+                    window.open("https://youtube.com", "_blank");
+                } else {
+                    response = `I am not programmed for that response. I will search Google for "${rawText}" for you.`;
+                    window.open(`http://google.com/search?q=${encodeURIComponent(rawText)}`, "_blank");
+                }
+                
+                return response;
+            }
+        });
+    </script>
+
+</body>
+</html>
